@@ -1,0 +1,67 @@
+# Load the dataset from an Excel file into R
+PCA1 <- read_excel("PCA2.xlsx")
+
+# Run PCA on the dataset, scaling the variables so they all have equal weight
+res.pca <- prcomp(PCA1, scale = TRUE)
+
+# Print the PCA results (rotation, center, scale, etc.)
+print(res.pca)
+
+# Summarize the PCA results (standard deviations, proportion of variance, etc.)
+summary(res.pca)
+
+# Get the eigenvalues (variance explained by each principal component)
+eig.val <- get_eigenvalue(res.pca)
+eig.val
+print(eig.val)
+
+# Visualize how much variance each component explains (scree plot)
+fviz_eig(res.pca, barfill = "lightgrey", barcolor = "black")
+
+# Get PCA variables (loadings, cos2, contributions, etc.)
+var <- get_pca_var(res.pca)
+var
+
+# Show the first few rows of cos2 values (how well each variable is represented by the components)
+head(var$cos2)
+
+# Load the corrplot package to make a correlation-style plot of cos2 values
+library(corrplot)
+
+# Rename the rows (original variables) and columns (PC axes) for better readability
+new_names1 <- c("Temperature", "Humidity", "Wind Speed", "Area", "Tree Coverage", "Tree Abundance", "Tree Diversity", "Age", "Elevation", "Coastal Distance", "Management Practice")
+new_names2 <- c("PC 1", "PC 2", "PC 3", "PC 4", "PC 5", "PC 6", "PC 7", "PC 8", "PC 9", "PC 10", "PC 11")
+rownames(var$cos2) <- new_names1
+colnames(var$cos2) <- new_names2
+
+# Create a color palette from orange to blue
+col_grey <- colorRampPalette(c("darkorange", "dodgerblue2"))(200)
+
+# Plot the cos2 values (not actual correlations), using a clean greyscale style
+corrplot(var$cos2, is.corr = FALSE, col = col_grey, tl.col = "grey17")
+
+# Plot the cos2 values for variables on the first two principal components
+fviz_cos2(res.pca, choice = "var", axes = 1:2)
+
+# PCA variable plot, coloring by cos2 (quality of representation)
+fviz_pca_var(res.pca,
+             col.var = "cos2", # Color by quality of representation (cos2)
+             gradient.cols = c("orange", "dodgerblue2"), # From low to high quality
+             repel = TRUE # Avoid overlapping text labels
+)
+
+# Plot the contribution of each variable to PC1
+a <- fviz_contrib(res.pca, choice = "var", axes = 1, fill = "lightgrey", color = "black")
+# Plot the contribution of each variable to PC2
+b <- fviz_contrib(res.pca, choice = "var", axes = 2, fill = "lightgrey", color = "black")
+# Plot the contribution of each variable to PC3
+c <- fviz_contrib(res.pca, choice = "var", axes = 3, fill = "lightgrey", color = "black")
+# Plot the contribution of each variable to PC4
+d <- fviz_contrib(res.pca, choice = "var", axes = 4, fill = "lightgrey", color = "black")
+
+# Arrange the 4 contribution plots in a grid
+grid.arrange(a, b, c, d, ncol=2, top='Contribution of the variables PCs 1-4')
+
+# Plot a correlation matrix-style chart of your original variables
+# Lower panel shows scatterplots, upper panel shows confidence ellipses, diagonal shows density plots
+corrgram(PCA1, lower.panel = panel.pts, upper.pannel = panel.conf, diag.panel = panel.density)
