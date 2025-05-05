@@ -1,0 +1,130 @@
+#-----------------------------------
+  Desc data
+#-----------------------------------
+
+Descriptive <- read_excel("descriptive datar.xlsx")
+View(Descriptive)
+
+# 1. Transpose the data while keeping the correct names
+Descriptive_t <- Descriptive %>%
+  tibble::rownames_to_column("Variable") %>%    # Step 1: move row names into a column
+  column_to_rownames("Variable") %>%             # Step 2: set them as rownames
+  t() %>%                                        # Step 3: transpose
+  as.data.frame() %>%                            # Step 4: back to data frame
+  tibble::rownames_to_column("OriginalColumn")   # Step 5: keep original column names
+
+# 2. Create your gt table
+my_table <- Descriptive_t %>%
+  gt() %>%
+  cols_width(
+    columns = 1 ~ px(40),         # Adjust the first column
+    everything() ~ px(15)         # Adjust the rest
+  ) %>%
+  tab_options(
+    table.font.size = 4,
+    data_row.padding = px(1),
+    table.width = pct(100),
+    row.striping.include_table_body = TRUE
+  )
+
+# 3. Save as PNG
+gtsave(my_table, "my_table.png", vwidth = 500, vheight = 500)
+
+#-------------------
+  tree data
+#---------------------
+
+# ---------------------------------------------------------------
+# Load Required Libraries
+# ---------------------------------------------------------------
+library(tidyverse)    # For data manipulation and plotting
+library(readxl)       # For reading Excel files
+library(glmmTMB)      # For fitting generalized linear mixed models
+library(emmeans)      # For estimated marginal means and comparisons
+library(ggplot2)      # For custom plotting
+
+#opening and preparing my data
+tree <- read_excel("Cemetery Tree Data/barkflypertree.xlsx")  # Read in tree-level data
+
+View(tree)  # Optional: View the data in the spreadsheet viewer
+
+# Create binary response: presence (1) or absence (0) of Ectopsocus
+# Group by tree type and exclude tree types with ≤ 5 observations
+tree <- tree %>%
+  mutate(prop = ifelse(ectopsocus > 0, 1, 0)) %>%  # Create binary variable
+  group_by(treetype) %>%
+  mutate(checking = n()) %>%
+  filter(checking > 5)
+
+#Fit negbinom modal
+mod0 <- glmmTMB(prop ~ treetype, family = binomial, data = tree)  # Fit model with tree type as predictor
+
+summary(mod0)  # Display model summary
+
+
+# Use emmeans to calculate predicted probabilities for each tree type
+plot(emmeans(mod0, spec = "treetype", type = "response"),
+     xlab = "Estimated Marginal Means",
+     ylab = "Tree Species")
+
+# ---------------------------------------------------------------
+# Create Data Frame from emmeans for Custom Plot
+# ---------------------------------------------------------------
+emm <- emmeans(mod0, specs = "treetype", type = "response")  # Calculate marginal means
+emm_df <- as.data.frame(emm)  # Convert to data frame for ggplot
+
+ggplot(emm_df, aes(x = prob, y = factor(treetype))) + 
+  geom_point() +
+  geom_errorbarh(aes(xmin = asymp.LCL, xmax = asymp.UCL), height = 0.2) +  # CI bars
+  geom_vline(xintercept = 0.68, color = "red", linetype = "dotted", linewidth = 0.5) +  # Reference line
+  labs(x = "Estimated Marginal Means", y = "Tree Species") +
+  theme_minimal()
+
+# Uses rectangles instead of error bars for clearer comparison
+ggplot(emm_df, aes(x = prob, y = factor(treetype))) + 
+  geom_point(color = "black", size = 2) +  # Points for means
+  geom_rect(aes(xmin = asymp.LCL, xmax = asymp.UCL, 
+                ymin = as.numeric(factor(treetype)) - 0.4, 
+                ymax = as.numeric(factor(treetype)) + 0.4), 
+            fill = "grey62", color = "grey30", alpha = 0.5) +  # Confidence intervals as boxes
+  geom_vline(xintercept = 0.68, color = "red2", linetype = "dotted", size = 1) +  # Threshold line
+  labs(x = "Estimated Marginal Means", y = "Tree Species") +
+  theme_grey()  # Use grey background for clearer visuals
+
+
+#-----------------
+species acucmulation
+#---------------
+
+# Load your Excel dataset
+data_full <- read_excel("Cemetery Tree Data/barkflypertree.xlsx")
+
+# Remove metadata columns like tree species name and cemetery ID to keep only species data
+species_data <- data_full[, !(names(data_full) %in% c("Tree_Species", "cem"))]
+
+# Define a function to ensure all values are numeric (coerce non-numeric to NA)
+convert_to_numeric <- function(x) {
+  as.numeric(as.character(x))
+}
+
+# Apply conversion to each column
+species_data <- as.data.frame(lapply(species_data, convert_to_numeric))
+
+# Remove rows where all species counts are zero
+empty_rows <- apply(species_data, 1, function(x) all(x == 0))
+species_data_clean <- species_data[!empty_rows, ]
+
+# Remove rows containing any NA values
+na_rows <- apply(species_data_clean, 1, function(x) any(is.na(x)))
+species_data_clean <- species_data_clean[!na_rows, ]
+
+# Calculate total abundance for each species across all observations
+species_abundance <- colSums(species_data_clean)
+
+# Plot histogram showing how common different total abundances are
+ggplot(data.frame(Abundance = species_abundance), aes(x = Abundance)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
+  labs(title = "Histogram of Species Abundance",
+       x = "Total Abundance (Sum Across All Trees)",
+       y = "Number of Species") +
+  theme_minimal()
