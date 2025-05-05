@@ -1,0 +1,186 @@
+# ==========================================================
+# Barkfly Analysis: GLMs for Diversity & Abundance with PCA
+# ==========================================================
+
+# Required libraries
+library(car)
+library(DHARMa)
+library(performance)
+library(ggeffects)
+library(see)
+library(ggplot2)
+library(gridExtra)
+library(sjPlot)
+library(MASS)
+
+# ----------------------------------------------------------
+# Data Set 1 - Barkfly Diversity Model
+# ----------------------------------------------------------
+
+# Fit Gaussian GLM with Barkfly Diversity as response
+glm_model <- glm(BarkflyDiversity1 ~ DIM1 + DIM3 + Prop, data = data_for_glm, family = gaussian())
+
+# Type III ANOVA to test effect significance
+car::Anova(glm_model, type = 3)
+
+# Model fit via AIC
+AIC(glm_model)
+
+# View model summary
+summary(glm_model)
+
+# Check residuals and model assumptions
+DHARMa::simulateResiduals(glm_model, plot = TRUE)
+
+# Predict response for DIM1 and DIM3
+ab_model_f1 <- glm(BarkflyDiversity1 ~ DIM1 + DIM3 + Prop, data = data_for_glm, family = gaussian())
+ab_f_pred1.1 <- predict_response(ab_model_f1, terms = "DIM1")
+ab_f_pred1.2 <- predict_response(ab_model_f1, terms = "DIM3")
+
+# Plot predictions for PC1
+plot1.1 <- plot(ab_f_pred1.1) +
+  geom_point(data = data_for_glm, aes(x = DIM1, y = BarkflyDiversity1), color = "darkorange", alpha = 0.8, size = 1) +
+  labs(x = "PC1", y = "Barkfly Diversity")
+
+# Plot predictions for PC3
+plot1.2 <- plot(ab_f_pred1.2) +
+  geom_point(data = data_for_glm, aes(x = DIM3, y = BarkflyDiversity1), color = "darkorange", alpha = 0.8, size = 1) +
+  labs(x = "PC3", y = NULL)
+
+# Combine plots
+grid.arrange(plot1.1, plot1.2, ncol = 2, top = "Predicted Response of Diversity from PC")
+
+# ----------------------------------------------------------
+# Data Set 2 - Barkfly Abundance Model
+# ----------------------------------------------------------
+
+# Fit negative binomial model for abundance
+glm_model2 <- glm.nb(BarkflyAbundance1 ~ DIM4 + DIM1, data = data_for_glm2)
+
+# ANOVA and diagnostics
+car::Anova(glm_model2, type = 3)
+AIC(glm_model2)
+DHARMa::simulateResiduals(glm_model2, plot = TRUE)
+
+# Predict response
+ab_model_f2 <- glm.nb(BarkflyAbundance1 ~ DIM1 + DIM4, data = data_for_glm2)
+ab_f_pred2.1 <- predict_response(ab_model_f2, terms = "DIM1")
+ab_f_pred2.2 <- predict_response(ab_model_f2, terms = "DIM4")
+
+# Plot predictions
+plot2.1 <- plot(ab_f_pred2.1) +
+  geom_point(data = data_for_glm2, aes(x = DIM1, y = BarkflyAbundance1), color = "dodgerblue3", alpha = 0.8, size = 1) +
+  labs(x = "PC1", y = "Barkfly Abundance")
+
+plot2.2 <- plot(ab_f_pred2.2) +
+  geom_point(data = data_for_glm2, aes(x = DIM4, y = BarkflyAbundance1), color = "dodgerblue3", alpha = 0.8, size = 1) +
+  labs(x = "PC4", y = NULL)
+
+grid.arrange(plot2.1, plot2.2, ncol = 2, top = "Predicted Response of Abundance from PC")
+
+# ----------------------------------------------------------
+# Data Set 3 - Barkfly Diversity Model
+# ----------------------------------------------------------
+
+# GLM for second diversity data set
+glm_model3 <- glm(BarkflyDiversity2 ~ DIM1 + DIM2 + DIM4, data = data_for_glm3, family = gaussian())
+
+# ANOVA and diagnostics
+car::Anova(glm_model3, type = 3)
+AIC(glm_model3)
+DHARMa::simulateResiduals(glm_model3, plot = TRUE)
+
+# Predict response
+ab_model_f3 <- glm(BarkflyDiversity2 ~ DIM1 + DIM2 + DIM4, data = data_for_glm3, family = gaussian())
+ab_f_pred3.1 <- predict_response(ab_model_f3, terms = "DIM1")
+ab_f_pred3.2 <- predict_response(ab_model_f3, terms = "DIM4")
+
+# Plot predictions
+plot3.1 <- plot(ab_f_pred3.1) +
+  geom_point(data = data_for_glm3, aes(x = DIM1, y = BarkflyDiversity2), color = "darkorange3", alpha = 0.8, size = 1) +
+  labs(x = "PC1", y = "Barkfly Diversity")
+
+plot3.2 <- plot(ab_f_pred3.2) +
+  geom_point(data = data_for_glm3, aes(x = DIM4, y = BarkflyDiversity2), color = "darkorange3", alpha = 0.8, size = 1) +
+  labs(x = "PC4", y = NULL)
+
+grid.arrange(plot3.1, plot3.2, ncol = 2, top = "Predicted Response of Diversity from PC")
+
+# ----------------------------------------------------------
+# Data Set 4 - Barkfly Abundance Model
+# ----------------------------------------------------------
+
+# GLM for second abundance data set
+glm_model4 <- glm.nb(BarkflyAbundance2 ~ DIM1 + DIM4 + Prop, data = data_for_glm4)
+
+# ANOVA, diagnostics and summary
+car::Anova(glm_model4, type = 3)
+AIC(glm_model4)
+DHARMa::simulateResiduals(glm_model4, plot = TRUE)
+summary(glm_model4)
+
+# Predict response
+ab_model_f4 <- glm.nb(BarkflyAbundance2 ~ DIM1 + DIM4 + Prop, data = data_for_glm4)
+ab_f_pred4.1 <- predict_response(ab_model_f4, terms = "DIM1")
+ab_f_pred4.2 <- predict_response(ab_model_f4, terms = "DIM4")
+ab_f_pred4.3 <- predict_response(ab_model_f4, terms = "Prop")
+
+# Plot predictions
+plot4.1 <- plot(ab_f_pred4.1) +
+  geom_point(data = data_for_glm4, aes(x = DIM1, y = BarkflyAbundance2), color = "dodgerblue3", alpha = 0.8, size = 1) +
+  labs(x = "PC1", y = "Barkfly Abundance")
+
+plot4.2 <- plot(ab_f_pred4.2) +
+  geom_point(data = data_for_glm4, aes(x = DIM4, y = BarkflyAbundance2), color = "dodgerblue3", alpha = 0.8, size = 1) +
+  labs(x = "PC4", y = NULL)
+
+plot4.3 <- plot(ab_f_pred4.3) +
+  geom_point(data = data_for_glm4, aes(x = Prop, y = BarkflyAbundance2), color = "dodgerblue3", alpha = 0.8, size = 1) +
+  labs(x = "Proportion Sampled", y = "Barkfly Abundance")
+
+# Display plots
+grid.arrange(plot4.1, plot4.2, ncol = 2, top = "Predicted Response of Abundance from PC")
+print(plot4.3)
+
+# ----------------------------------------------------------
+# Diversity vs Abundance Comparison
+# ----------------------------------------------------------
+
+# Model testing whether diversity predicts abundance
+glmcompar <- glm.nb(BarkflyAbundance ~ BarkflyDiversity, data = BarkflyCompletedNE)
+car::Anova(glmcompar, type = 3)
+DHARMa::simulateResiduals(glm_model4, plot = TRUE)
+
+# ----------------------------------------------------------
+# Model Tables and Summary Outputs
+# ----------------------------------------------------------
+
+# Define readable labels for model output
+custom_labels <- c(
+  `(Intercept)` = "Intercept",
+  `DIM1` = "PC1",
+  `DIM2` = "PC2",
+  `DIM3` = "PC3",
+  `DIM4` = "PC4",
+  `Prop` = "Proportion"
+)
+
+# Model summary tables (Set 4 and 3)
+tab_model(
+  glm_model4, glm_model3,
+  pred.labels = custom_labels,
+  dv.labels = c("Abundance", "Diversity"),
+  string.pred = "Predictor",
+  string.est = "Estimate",
+  string.p = "P-value"
+)
+
+# Model summary tables (Set 2 and 1)
+tab_model(
+  glm_model2, glm_model,
+  pred.labels = custom_labels,
+  dv.labels = c("Abundance", "Diversity"),
+  string.pred = "Predictor",
+  string.est = "Estimate",
+  string.p = "P-value"
+)
